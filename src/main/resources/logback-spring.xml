@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<configuration scan="true" scanPeriod="60 seconds">
+    <jmxConfigurator />
+    <property name="encoderPattern" value="%d{ISO8601} %-6r [%-3t] %-5p %c -%m%n" />
+    <include resource="org/springframework/boot/logging/logback/defaults.xml" />
+    <property name="springAppName" value="bnp-user-pet-manager" />
+
+    <appender name="STDOUT" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder class="net.logstash.logback.encoder.LoggingEventCompositeJsonEncoder">
+            <providers>
+                <timestamp>
+                    <timeZone>UTC</timeZone>
+                </timestamp>
+                <pattern>
+                    <pattern>
+                        {
+                        "severity": "%-5level",
+                        "serviceId": "${springAppName:-}",
+                        "transactionID":"%X{traceId:−}",
+                        "correlationID":"%X{traceId:−}",
+                        "pid":"${PID:-}",
+                        "class": "%logger{36}",
+                        "message": "[%t] %message %n %ex{full}"
+                        }
+                    </pattern>
+                </pattern>
+            </providers>
+        </encoder>
+    </appender>
+
+    <root level="INFO">
+        <appender-ref ref="STDOUT" />
+    </root>
+
+</configuration>
