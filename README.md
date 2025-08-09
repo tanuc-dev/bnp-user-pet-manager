@@ -1,168 +1,173 @@
-# User & Pet Management API  
-Spring Boot 3 + Java 21 + H2 + Swagger
+# BNP User Pet Manager
 
-## 📋 Overview
-A RESTful API to manage **Users**, **Pets**, and their **ownerships**, with specific rules:
-- A user can own multiple pets.
-- A pet can have multiple owners **only if they share the same address**.
-- Handles **homonyms** (users with identical name and first name).
-- Address de-duplication on creation.
-- Supports queries like:
-  - Pets owned by a user.
-  - Pets from a specific city.
-  - Users that own a specific kind of pet from a specific city.
-  - Pets owned by women in a specific city.
-- Supports "death" management for users and pets (soft delete).
+A **Spring Boot** application for managing **Users**, **Pets**, and their **Ownership relationships** with:
+- Address de-duplication
+- Concurrency-safe updates (pessimistic locking with retry)
+- Centralized exception handling
+- Request `traceId` logging for troubleshooting
 
 ---
 
-## 🛠 Tech Stack
-- **Java 21**
-- **Spring Boot 3**
-- **Spring Data JPA**
-- **H2 Database** (in-memory)
-- **Lombok**
-- **springdoc-openapi** for Swagger UI
+## 📌 API Design Choices
+
+### **RESTful Principles**
+- **Resource-based URLs** (`/users`, `/pets`, `/ownerships`) clearly represent entities.
+- **HTTP verbs** reflect the operation type:
+  - `POST` → Create
+  - `PUT` → Full update (with pessimistic locking)
+  - `PATCH` → Partial update (e.g., mark as deceased)
+  - `GET` → Query
+- **Stateless interactions** – All state is persisted in the database, no in-memory session data.
+
+### **Address De-Duplication**
+- Implemented at the **service layer** to avoid duplicates before persistence.
+- Ensures **unique addresses** using database constraints.
+
+### **Pessimistic Locking + Retry**
+- Prevents lost updates under concurrent modification.
+- Uses **Spring Retry** to transparently retry when lock conflicts occur.
+- **Exponential backoff** (50ms → 100ms → 200ms) balances performance with contention handling.
+
+### **Trace ID in Responses**
+- Every request generates a `traceId` added to:
+  - **Logs** (via MDC)
+  - **HTTP Response header**
+  - **Error response bodies**
+- Enables easy correlation between client-side errors and server logs.
+
+### **Centralized Exception Handling**
+- One place (`GlobalExceptionHandler`) to handle all errors.
+- Maps exceptions to **meaningful HTTP statuses** with consistent JSON error format.
 
 ---
 
-## 🚀 Setup & Run
+## 🛠 Technology Stack & Justifications
 
-### Prerequisites
-- Java 21+
-- Maven 3.8+
+| Technology | Purpose | Why Chosen |
+|------------|---------|------------|
+| **Spring Boot** | Application framework | Rapid setup, convention-over-configuration |
+| **Spring Data JPA** | ORM & repository abstraction | Reduces boilerplate, integrates with Hibernate |
+| **Hibernate** | ORM implementation | Mature, widely used, supports pessimistic locking |
+| **Spring Retry** | Automatic retry on transient failures | Clean declarative retries without manual looping |
+| **Jakarta Validation** | Input validation | Standard annotations for field validation |
+| **Lombok** | Boilerplate reduction | Generates getters/setters/builders automatically |
+| **SLF4J + Logback** | Logging framework | Industry standard logging, flexible formats |
+| **Logstash Encoder** | JSON log output | Structured logs for easy search in ELK stack |
+| **JUnit + Mockito** | Testing | Unit + integration testing with mocking |
 
-### Steps
+---
+
+## 🚀 Running the Application
+
 ```bash
-# Clone repo
-git clone <repo-url>
-cd user-pet-manager
-
-# Run
+mvn clean install
 mvn spring-boot:run
 ```
 
-Application starts at: [http://localhost:8080/api/v1](http://localhost:8080/api/v1)
-
----
-
-## 🔍 API Documentation
-Swagger UI: [http://localhost:8080/api/v1/swagger-ui.html](http://localhost:8080/api/v1/swagger-ui.html)  
-OpenAPI JSON: [http://localhost:8080/api/v1/v3/api-docs](http://localhost:8080/api/v1/v3/api-docs)  
-
----
-
-## 🗄 Database Access
-H2 console: [http://localhost:8080/api/v1/h2-console](http://localhost:8080/api/v1/h2-console)  
-JDBC URL: `jdbc:h2:mem:testdb`  
-User: `sa` / Password: *(empty)*
-
----
-
-## 📂 Package Structure
+Application runs at:
 ```
-src/main/java/com/example
-│── config        # Swagger/OpenAPI config
-│── controller    # REST controllers
-│── dto           # Request/Response DTOs
-│── error         # Global exception handler
-│── mapper        # (Optional) Entity→DTO mappers
-│── model         # JPA entities + enums
-│── repository    # Spring Data JPA repos
-│── service       # Business logic
+http://localhost:8080/api/v1/
 ```
 
----
+## 🧭 Swagger / OpenAPI (testing)
 
-## 🗃 Data Model
-
-### Entities:
-- **User**
-  - id, name, firstName, age, gender, address, deceased
-- **Address**
-  - id, city, type, addressName, number
-  - Unique constraint `(city, type, addressName, number)` for de-duplication
-- **Pet**
-  - id, name, age, type, address, deceased
-- **UserPetOwnership**
-  - id, user, pet
-  - Unique constraint `(user_id, pet_id)`
-
-**Key relationship rule**:  
-Pet’s `address_id` must match all its owners’ `address_id`.
+- **Swagger UI:** `http://localhost:8080/api/v1/swagger-ui/index.html`
+- **OpenAPI JSON:** `http://localhost:8080/api/v1/api-docs`
 
 ---
 
-## 💡 Design Decisions
-- **Address de-duplication** implemented in `AddressService.findOrCreate()` with:
-  - Canonicalization (trim, collapse spaces, lower-case)
-  - DB unique constraint
-  - Race condition handling with retry
-- **Pet–Address rule enforcement**:
-  - In `OwnershipController.link()`, validate user address matches pet address before saving ownership.
-- **Soft delete** for "death" management (boolean flags).
-- **No AddressController** — addresses are created via User/Pet creation.
+## 📜 Key API Endpoints
+
+### **User**
+- `POST /users` → Create user
+- `PUT /users/{id}` → Update with retry
+- `PATCH /users/{id}/death` → Mark as deceased
+- `GET /users/by-name?name=...&firstName=...`
+
+### **Pet**
+- `POST /pets` → Create pet
+- `PUT /pets/{id}` → Update with retry
+- `PATCH /pets/{id}/death` → Mark as deceased
+
+### **Ownership**
+- `POST /ownerships` → Link user and pet
+- `GET /ownerships/pets-by-user`
+- `GET /ownerships/pets-by-city`
+- `GET /ownerships/users-by-pet-type-and-city`
+- `GET /ownerships/pets-by-women-in-city`
 
 ---
 
-## 📜 API Endpoints
+## 📦 Example Error Response with Trace ID
 
-### Users
-| Method | Path | Description |
-|--------|------|-------------|
-| POST   | `/users` | Create user with address de-dup |
-| PUT    | `/users/{id}` | Update user & address |
-| PATCH  | `/users/{id}/death` | Mark user as deceased |
-| GET    | `/users/by-name` | Find all users by name & firstName (handles homonyms) |
-
-### Pets
-| Method | Path | Description |
-|--------|------|-------------|
-| POST   | `/pets` | Create pet with address de-dup |
-| PUT    | `/pets/{id}` | Update pet & address |
-| PATCH  | `/pets/{id}/death` | Mark pet as deceased |
-| GET    | `/pets/by-city` | List pets from specific city |
-
-### Ownerships
-| Method | Path | Description |
-|--------|------|-------------|
-| POST   | `/ownerships` | Link existing user & pet (same address rule) |
-| GET    | `/ownerships/pets-by-user` | List pets owned by a user |
-| GET    | `/ownerships/pets-by-city` | List pets from a city |
-| GET    | `/ownerships/users-by-pet-type-and-city` | List users owning a pet type in city |
-| GET    | `/ownerships/pets-by-women-in-city` | List pets owned by women in city |
-
----
-
-## 🧪 Sample Data
-See `src/main/resources/data.sql` for examples:
-```sql
-INSERT INTO address (city, type, address_name, number) VALUES
-('paris', 'road', 'antoine lavoisier', '10'),
-('mumbai', 'street', 'marine drive', '200');
-
-INSERT INTO users (name, first_name, age, gender, address_id, is_deceased)
-VALUES ('Doe', 'John', 30, 'MALE', 1, FALSE);
-
-INSERT INTO pet (name, age, type, is_deceased, address_id)
-VALUES ('Buddy', 5, 'DOG', FALSE, 1);
-
-INSERT INTO user_pet_ownership (user_id, pet_id) VALUES (1, 1);
+```json
+{
+  "traceId": "c53d12e1-bbd9-41f0-8c5f-2cf91590cb85",
+  "message": "User not found: 42"
+}
 ```
 
 ---
 
-## 🧾 Evaluation Criteria Mapping
-- **Code Quality & Java 21 features**: Records for DTOs, canonicalization, proper layering
-- **API Design**: RESTful URLs, status codes, grouped endpoints
-- **Database & Data Modeling**: Normalized tables, constraints, address de-dup
-- **Testing**: (You can add JUnit + MockMvc tests)
-- **Documentation**: This README + Swagger UI
+## 🧪 Testing
 
----
-
-## 📌 Running Tests
 ```bash
 mvn test
 ```
-*(Add unit tests for services and integration tests for controllers)*
+Covers:
+- Controllers (MockMvc)
+- Services (business logic + retry behavior)
+- Exception handling
+- TraceIdFilter behavior
+- Utility methods (traceId retrieval)
+
+---
+
+## 🗄️ Database ER Diagram & Justification
+
+Below is the **Entity-Relationship (ER)** diagram for the system:
+
+```mermaid
+erDiagram
+    USER {
+        Long id PK
+        String name
+        String firstName
+        Integer age
+        Enum gender
+        Boolean deceased
+        Long address_id FK
+    }
+    PET {
+        Long id PK
+        String name
+        Integer age
+        Enum type
+        Boolean deceased
+        Long address_id FK
+    }
+    ADDRESS {
+        Long id PK
+        String city
+        String type
+        String addressName
+        String number
+    }
+    USER_PET_OWNERSHIP {
+        Long id PK
+        Long user_id FK
+        Long pet_id FK
+    }
+
+    USER ||--o{ USER_PET_OWNERSHIP : owns
+    PET ||--o{ USER_PET_OWNERSHIP : owned_by
+    ADDRESS ||--o{ USER : resides_in
+    ADDRESS ||--o{ PET : located_at
+```
+
+**Design Justification:**  
+- **Address** is a separate table to enable **de-duplication** of locations (users/pets at same address share the same record).  
+- **User** and **Pet** are distinct entities to handle independent lifecycle (pets can be transferred, users can move).  
+- **UserPetOwnership** is a **many-to-many** join table allowing multiple owners for a pet and multiple pets for a user.  
+- **Enums** (`Gender`, `PetType`) ensure controlled values, preventing invalid data entries.  
+- **Soft delete** is implemented using the `deceased` boolean to maintain history without removing records.

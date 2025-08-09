@@ -1,5 +1,7 @@
 package com.example.demo.exception;
 
+import static com.example.demo.filter.TraceIdFilter.TRACE_ID;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,17 +22,19 @@ import lombok.extern.slf4j.Slf4j;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final String MESSAGE = "message";
+
     private String currentTraceId() {
-        return MDC.get("traceId") != null ? MDC.get("traceId") : "";
+        return MDC.get(TRACE_ID) != null ? MDC.get(TRACE_ID) : "";
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, Object> handleValidation(MethodArgumentNotValidException ex) {
-        log.warn("Validation failed: {} traceId={}", ex.getMessage(), MDC.get("traceId"));
+        log.warn("Validation failed: {} traceId={}", ex.getMessage(), MDC.get(TRACE_ID));
         Map<String, Object> body = new HashMap<>();
-        body.put("traceId", currentTraceId());
-        body.put("message", "Validation failed");
+        body.put(TRACE_ID, currentTraceId());
+        body.put(MESSAGE, "Validation failed");
         Map<String, String> errors = new HashMap<>();
         for (FieldError fe : ex.getBindingResult().getFieldErrors()) {
             errors.put(fe.getField(), fe.getDefaultMessage());
@@ -42,17 +46,17 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, Object> handleIllegalArgument(IllegalArgumentException ex) {
-        log.info("Bad Request: {} traceId={}", ex.getMessage(), MDC.get("traceId"));
-        return Map.of("traceId", currentTraceId(),
-                      "message", ex.getMessage());
+        log.info("Bad Request: {} traceId={}", ex.getMessage(), MDC.get(TRACE_ID));
+        return Map.of(TRACE_ID, currentTraceId(),
+                      MESSAGE, ex.getMessage());
     }
 
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, Object> handleNotFound(RuntimeException ex) {
-        log.info("Not found: {} traceId={}", ex.getMessage(), MDC.get("traceId"));
-        return Map.of("traceId", currentTraceId(),
-                      "message", ex.getMessage());
+        log.info("Not found: {} traceId={}", ex.getMessage(), MDC.get(TRACE_ID));
+        return Map.of(TRACE_ID, currentTraceId(),
+                      MESSAGE, ex.getMessage());
     }
 
     @ExceptionHandler({
@@ -62,9 +66,9 @@ public class GlobalExceptionHandler {
     })
     @ResponseStatus(HttpStatus.CONFLICT)
     public Map<String, Object> handlePessimisticConflicts(Exception ex) {
-        log.warn("Concurrency conflict: {} traceId={}", ex.toString(), MDC.get("traceId"));
-        return Map.of("traceId", currentTraceId(),
-                      "message","Conflict: resource is busy, please retry.");
+        log.warn("Concurrency conflict: {} traceId={}", ex.toString(), MDC.get(TRACE_ID));
+        return Map.of(TRACE_ID, currentTraceId(),
+                      MESSAGE,"Conflict: resource is busy, please retry.");
     }
 
 }
