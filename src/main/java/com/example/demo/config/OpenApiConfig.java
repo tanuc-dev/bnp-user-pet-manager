@@ -7,6 +7,17 @@ import org.springframework.context.annotation.Configuration;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.info.Info;
 
+/**
+ * Configuration class for setting up OpenAPI documentation for the User & Pet Management API.
+ * <p>
+ * This class defines beans for OpenAPI metadata and endpoint grouping using SpringDoc.
+ * <ul>
+ *   <li>{@link #apiInfo()} - Configures the OpenAPI specification with title, description, and version.</li>
+ *   <li>{@link #publicApi()} - Groups public API endpoints for users, pets, addresses, and ownerships.</li>
+ * </ul>
+ * <p>
+ * Useful for generating interactive API documentation and organizing endpoints as the project grows.
+ */
 @Configuration
 public class OpenApiConfig {
 

@@ -13,6 +13,20 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * A servlet filter that generates a unique trace ID for each HTTP request and adds it to the logging context (MDC)
+ * and response headers. This enables tracing of requests across logs and services.
+ * <p>
+ * The filter:
+ * <ul>
+ *   <li>Generates a UUID as the trace ID for each request.</li>
+ *   <li>Puts the trace ID into the MDC for logging correlation.</li>
+ *   <li>Sets the trace ID as a response header for downstream services or clients.</li>
+ *   <li>Logs the start and end of each request, including HTTP method, path, status, and trace ID.</li>
+ *   <li>Removes the trace ID from the MDC after the request is processed to avoid leakage between requests.</li>
+ * </ul>
+ * This filter should be registered as a Spring component and will execute once per request.
+ */
 @Slf4j
 @Component
 public class TraceIdFilter extends OncePerRequestFilter {

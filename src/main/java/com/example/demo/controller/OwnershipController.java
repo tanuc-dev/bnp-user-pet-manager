@@ -25,6 +25,21 @@ import com.example.demo.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * REST controller for managing user-pet ownerships.
+ * <p>
+ * Provides endpoints to:
+ * <ul>
+ *     <li>Link a user and a pet at a specific address (address is de-duped).</li>
+ *     <li>Retrieve pets owned by a user, handling homonyms.</li>
+ *     <li>Retrieve pets from a specific city.</li>
+ *     <li>Retrieve users that own a specific kind of pet from a specific city.</li>
+ *     <li>Retrieve pets owned by women in a city.</li>
+ * </ul>
+ * <p>
+ * Utilizes {@link UserService}, {@link PetService}, and {@link UserPetOwnershipService}
+ * for business logic and data access.
+ */
 @RestController
 @RequestMapping("/ownerships")
 @RequiredArgsConstructor
@@ -34,7 +49,11 @@ public class OwnershipController {
     private final PetService petService;
     private final UserPetOwnershipService ownershipService;
 
-    // Link a user + pet at a specific address (address is de-duped)
+    /**
+     * Links a user and a pet at a specific address.
+     *
+     * @param dto the ownership creation data transfer object
+     */
     @PostMapping
     public void link(@Valid @RequestBody OwnershipCreateDto dto) {
         User user = userService.getOrThrow(dto.userId());
@@ -46,7 +65,13 @@ public class OwnershipController {
                 .user(user).pet(pet).build());
     }
 
-    // 1) Pets owned by a user (handle homonyms)
+    /**
+     * Retrieves pets owned by a user, handling homonyms.
+     *
+     * @param name      the name of the user
+     * @param firstName the first name of the user
+     * @return a list of pets owned by the user
+     */
     @GetMapping("/pets-by-user")
     public List<PetDto> petsByUser(@RequestParam String name, @RequestParam String firstName) {
         return userService.byNameFirstName(name, firstName).stream()
@@ -58,7 +83,12 @@ public class OwnershipController {
                 .toList();
     }
 
-    // 2) Pets from a specific city
+    /**
+     * Retrieves pets from a specific city.
+     *
+     * @param city the city to search for pets
+     * @return a list of pets in the specified city
+     */
     @GetMapping("/pets-by-city")
     public List<PetDto> petsByCity(@RequestParam String city) {
         return petService.byCity(city).stream()
@@ -66,7 +96,13 @@ public class OwnershipController {
                 .toList();
     }
 
-    // 3) Users that own a specific kind of pet from a specific city
+    /**
+     * Retrieves users that own a specific kind of pet from a specific city.
+     *
+     * @param petType the type of pet
+     * @param city    the city to search for users
+     * @return a list of users that own the specified pet type in the specified city
+     */
     @GetMapping("/users-by-pet-type-and-city")
     public List<UserDto> usersByPetTypeAndCity(@RequestParam PetType petType, @RequestParam String city) {
         return ownershipService.usersByPetTypeAndCity(petType, city).stream()
@@ -74,7 +110,12 @@ public class OwnershipController {
                 .toList();
     }
 
-    // 4) Pets owned by women in a city
+    /**
+     * Retrieves pets owned by women in a specific city.
+     *
+     * @param city the city to search for pets
+     * @return a list of pets owned by women in the specified city
+     */
     @GetMapping("/pets-by-women-in-city")
     public List<PetDto> petsByWomenInCity(@RequestParam String city) {
         // women in city → get their pets
@@ -87,13 +128,24 @@ public class OwnershipController {
                 .toList();
     }
 
-    // ---- mappers ----
+    /**
+     * Maps a User entity to a UserDto.
+     *
+     * @param u the User entity
+     * @return the mapped UserDto
+     */
     private UserDto toUserDto(User u) {
         Address a = u.getAddress();
         var ad = new AddressDto(a.getId(), a.getCity(), a.getType(), a.getAddressName(), a.getNumber());
         return new UserDto(u.getId(), u.getName(), u.getFirstName(), u.getAge(), u.getGender(), ad, u.isDeceased());
     }
 
+    /**
+     * Maps a Pet entity to a PetDto.
+     *
+     * @param p the Pet entity
+     * @return the mapped PetDto
+     */
     private PetDto toPetDto(Pet p) {
         return new PetDto(p.getId(), p.getName(), p.getAge(), p.getType(), p.isDeceased());
     }

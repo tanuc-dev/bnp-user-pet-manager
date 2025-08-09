@@ -24,6 +24,18 @@ import com.example.demo.service.UserService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * REST controller for managing users.
+ * <p>
+ * Provides endpoints for creating, updating, marking users as deceased, and searching users by name.
+ * <ul>
+ *     <li><b>POST /users</b>: Create a new user. The address is created or reused (de-duplicated) automatically.</li>
+ *     <li><b>PUT /users/{id}</b>: Update user core fields and optionally move to a new address (also de-duplicated).</li>
+ *     <li><b>PATCH /users/{id}/death</b>: Mark a user as deceased (soft delete).</li>
+ *     <li><b>GET /users/by-name</b>: Find all users matching the given name and first name (handles homonyms).</li>
+ * </ul>
+ * Uses {@link UserService} for user operations and {@link AddressService} for address management.
+ */
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
@@ -32,7 +44,12 @@ public class UserController {
     private final UserService userService;
     private final AddressService addressService;
 
-    // CREATE (insert) - address is created or reused (de-dup) behind the scenes
+    /**
+     * CREATE (insert) - address is created or reused (de-dup) behind the scenes.
+     *
+     * @param dto the user creation data transfer object
+     * @return the created user data transfer object
+     */
     @PostMapping
     public UserDto create(@Valid @RequestBody UserCreateDto dto) {
         Address addr = addressService.findOrCreate(dto.address());
@@ -46,7 +63,13 @@ public class UserController {
         return toDto(saved);
     }
 
-    // UPDATE user core fields + (optionally) move to a new address (also de-duped)
+    /**
+     * UPDATE user core fields + (optionally) move to a new address (also de-duped).
+     *
+     * @param id  the ID of the user to update
+     * @param dto the user update data transfer object
+     * @return the updated user data transfer object
+     */
     @PutMapping("/{id}")
     public UserDto update(@PathVariable Long id, @Valid @RequestBody UserCreateDto dto) {
         var updated = userService.updateWithPessimisticLockAndRetry(id, u -> {
@@ -61,19 +84,35 @@ public class UserController {
 
     }
 
-    // Mark user deceased (soft delete)
+    /**
+     * Marks a user as deceased(soft delete)
+     *
+     * @param id the ID of the user to mark as deceased
+     * @return the updated user data transfer object
+     */
     @PatchMapping("/{id}/death")
     public UserDto markDeceased(@PathVariable Long id) {
         return toDto(userService.markDeceased(id));
     }
 
-    // Handle homonyms: returns all matching users (you can pick the correct one by id)
+    /**
+     * Handle homonyms: returns all matching users (you can pick the correct one by id).
+     *
+     * @param name      the name of the user
+     * @param firstName the first name of the user
+     * @return a list of matching users
+     */
     @GetMapping("/by-name")
     public List<UserDto> byName(@RequestParam String name, @RequestParam String firstName) {
         return userService.byNameFirstName(name, firstName).stream().map(this::toDto).toList();
     }
 
-    // ---- mappers ----
+    /**
+     * Maps a User entity to a UserDto.
+     *
+     * @param u the User entity
+     * @return the UserDto
+     */
     private UserDto toDto(User u) {
         var a = u.getAddress();
         var ad = new AddressDto(a.getId(), a.getCity(), a.getType(), a.getAddressName(), a.getNumber());

@@ -12,6 +12,22 @@ import com.example.demo.repository.UserPetOwnershipRepository;
 
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service class for managing user-pet ownership relationships.
+ * Provides methods to save ownership records and query ownerships by user, pet, pet type, and city.
+ *
+ * <ul>
+ *   <li>{@link #save(UserPetOwnership)} - Persists a UserPetOwnership entity.</li>
+ *   <li>{@link #byUser(User)} - Retrieves all ownerships for a given user.</li>
+ *   <li>{@link #byPet(Pet)} - Retrieves all ownerships for a given pet.</li>
+ *   <li>{@link #usersByPetTypeAndCity(PetType, String)} - Finds distinct users who own pets of a specific type in a given city.</li>
+ * </ul>
+ *
+ * Dependencies:
+ * <ul>
+ *   <li>{@link UserPetOwnershipRepository} - Repository for UserPetOwnership entities.</li>
+ * </ul>
+ */
 @Service
 @RequiredArgsConstructor
 public class UserPetOwnershipService {

@@ -18,6 +18,22 @@ import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import lombok.extern.slf4j.Slf4j;
 
+/**
+ * Global exception handler for REST controllers.
+ * <p>
+ * Handles and logs various exceptions thrown during request processing,
+ * providing consistent error responses with trace IDs for easier debugging.
+ * </p>
+ * <ul>
+ *   <li>{@link MethodArgumentNotValidException}: Handles validation errors, returns BAD_REQUEST with field-specific messages.</li>
+ *   <li>{@link IllegalArgumentException}: Handles bad requests, returns BAD_REQUEST with the exception message.</li>
+ *   <li>{@link RuntimeException}: Handles not found errors, returns NOT_FOUND with the exception message.</li>
+ *   <li>Pessimistic locking exceptions: Handles concurrency conflicts, returns CONFLICT with a retry message.</li>
+ * </ul>
+ * <p>
+ * Each response includes a trace ID for correlation in logs.
+ * </p>
+ */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -28,6 +44,12 @@ public class GlobalExceptionHandler {
         return MDC.get(TRACE_ID) != null ? MDC.get(TRACE_ID) : "";
     }
 
+    /**
+     * Handles validation errors.
+     *
+     * @param ex the exception
+     * @return a map containing the error details
+     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, Object> handleValidation(MethodArgumentNotValidException ex) {
@@ -43,6 +65,12 @@ public class GlobalExceptionHandler {
         return body;
     }
 
+    /**
+     * Handles illegal argument exceptions.
+     *
+     * @param ex the exception
+     * @return a map containing the error details
+     */
     @ExceptionHandler(IllegalArgumentException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public Map<String, Object> handleIllegalArgument(IllegalArgumentException ex) {
@@ -51,6 +79,12 @@ public class GlobalExceptionHandler {
                       MESSAGE, ex.getMessage());
     }
 
+    /**
+     * Handles runtime exceptions.
+     *
+     * @param ex the exception
+     * @return a map containing the error details
+     */
     @ExceptionHandler(RuntimeException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
     public Map<String, Object> handleNotFound(RuntimeException ex) {
@@ -59,6 +93,12 @@ public class GlobalExceptionHandler {
                       MESSAGE, ex.getMessage());
     }
 
+    /**
+     * Handles pessimistic locking exceptions.
+     *
+     * @param ex the exception
+     * @return a map containing the error details
+     */
     @ExceptionHandler({
             PessimisticLockException.class,
             LockTimeoutException.class,

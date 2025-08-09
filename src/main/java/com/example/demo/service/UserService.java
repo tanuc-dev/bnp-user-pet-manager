@@ -19,6 +19,27 @@ import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service class for managing User entities.
+ * <p>
+ * Provides methods for saving, retrieving, updating, and querying users,
+ * including support for pessimistic locking and retry mechanisms for concurrent updates.
+ * </p>
+ *
+ * <ul>
+ *   <li>{@link #save(User)} - Persists a new or existing user.</li>
+ *   <li>{@link #getOrThrow(Long)} - Retrieves a user by ID or throws an exception if not found.</li>
+ *   <li>{@link #byNameFirstName(String, String)} - Finds users by name and first name.</li>
+ *   <li>{@link #womenInCity(String)} - Finds female users in a specified city.</li>
+ *   <li>{@link #updateWithPessimisticLockAndRetry(Long, Consumer)} - Updates a user with pessimistic locking and retry logic.</li>
+ *   <li>{@link #markDeceased(Long)} - Marks a user as deceased.</li>
+ * </ul>
+ *
+ * <p>
+ * This service uses Spring's {@code @Transactional} and {@code @Retryable} annotations
+ * to ensure data consistency and handle transient locking issues.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class UserService {

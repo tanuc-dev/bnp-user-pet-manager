@@ -19,6 +19,27 @@ import jakarta.persistence.LockTimeoutException;
 import jakarta.persistence.PessimisticLockException;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * Service class for managing Pet entities.
+ * <p>
+ * Provides methods for saving, retrieving, updating, and querying pets,
+ * including support for pessimistic locking and retry mechanisms for concurrent updates.
+ * </p>
+ *
+ * <ul>
+ *   <li>{@link #save(Pet)} - Persists a new or existing Pet entity.</li>
+ *   <li>{@link #getOrThrow(Long)} - Retrieves a Pet by ID or throws an exception if not found.</li>
+ *   <li>{@link #byType(PetType)} - Finds pets by their type.</li>
+ *   <li>{@link #byCity(String)} - Finds pets by city, excluding deceased pets.</li>
+ *   <li>{@link #updateWithPessimisticLockAndRetry(Long, Consumer)} - Updates a Pet with pessimistic locking and retry logic for concurrency control.</li>
+ *   <li>{@link #markDeceased(Long)} - Marks a Pet as deceased.</li>
+ * </ul>
+ *
+ * <p>
+ * This service relies on {@link PetRepository} for data access and uses Spring's
+ * {@code @Transactional} and {@code @Retryable} annotations for transaction and retry management.
+ * </p>
+ */
 @Service
 @RequiredArgsConstructor
 public class PetService {

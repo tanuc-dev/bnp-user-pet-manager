@@ -18,6 +18,26 @@ import com.example.demo.service.PetService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 
+/**
+ * REST controller for managing pets.
+ * <p>
+ * Provides endpoints to create, update, and mark pets as deceased.
+ * </p>
+ *
+ * <ul>
+ *   <li><b>POST /pets</b>: Create a new pet.</li>
+ *   <li><b>PUT /pets/{id}</b>: Update an existing pet with pessimistic locking and retry.</li>
+ *   <li><b>PATCH /pets/{id}/death</b>: Mark a pet as deceased.</li>
+ * </ul>
+ *
+ * Dependencies:
+ * <ul>
+ *   <li>{@link PetService} - Service for pet operations.</li>
+ *   <li>{@link AddressService} - Service for address operations.</li>
+ * </ul>
+ *
+ * All endpoints return {@link PetDto} objects.
+ */
 @RestController
 @RequestMapping("/pets")
 @RequiredArgsConstructor
@@ -26,6 +46,12 @@ public class PetController {
     private final PetService petService;
     private final AddressService addressService;
 
+    /**
+     * Creates a new pet.
+     *
+     * @param dto the pet creation data transfer object
+     * @return the created pet data transfer object
+     */
     @PostMapping
     public PetDto create(@Valid @RequestBody PetCreateDto dto) {
         Address addr = addressService.findOrCreate(dto.address());
@@ -38,18 +64,31 @@ public class PetController {
         return toDto(saved);
     }
 
+    /**
+     * Updates an existing pet.
+     *
+     * @param id  the ID of the pet to update
+     * @param dto the pet update data transfer object
+     * @return the updated pet data transfer object
+     */
     @PutMapping("/{id}")
     public PetDto update(@PathVariable Long id, @Valid @RequestBody PetCreateDto dto) {
         Pet updated = petService.updateWithPessimisticLockAndRetry(id, p -> {
-        p.setName(dto.name());
-        p.setAge(dto.age());
-        p.setType(dto.type());
-        var addr = addressService.findOrCreate(dto.address());
-        p.setAddress(addr);
-    });
-    return toDto(updated);
+            p.setName(dto.name());
+            p.setAge(dto.age());
+            p.setType(dto.type());
+            var addr = addressService.findOrCreate(dto.address());
+            p.setAddress(addr);
+        });
+        return toDto(updated);
     }
 
+    /**
+     * Marks a pet as deceased.
+     *
+     * @param id the ID of the pet to mark as deceased
+     * @return the updated pet data transfer object
+     */
     @PatchMapping("/{id}/death")
     public PetDto markDeceased(@PathVariable Long id) {
         return toDto(petService.markDeceased(id));
